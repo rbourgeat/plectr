@@ -1,0 +1,45 @@
+pipeline:
+  name: 'Multi-Platform Release'
+
+  on:
+    push: [main]
+
+  jobs:
+    - name: 'release-linux'
+      image: 'rust:latest'
+      stage: 'build'
+      script:
+        - 'cd agent'
+        - 'cargo build --release'
+        - 'mv target/release/plectr target/release/plectr-linux-x86_64'
+      artifacts:
+        - 'agent/target/release/plectr-linux-x86_64'
+
+    - name: 'release-windows'
+      image: 'rust:latest'
+      stage: 'build'
+      script:
+        - 'apt-get update && apt-get install -y mingw-w64'
+        - 'rustup target add x86_64-pc-windows-gnu'
+        - 'cd agent'
+        - 'cargo build --release --target x86_64-pc-windows-gnu'
+        - 'mv target/x86_64-pc-windows-gnu/release/plectr.exe target/x86_64-pc-windows-gnu/release/plectr-windows-x86_64.exe'
+      artifacts:
+        - 'agent/target/x86_64-pc-windows-gnu/release/plectr-windows-x86_64.exe'
+
+    - name: 'release-macos'
+      image: 'joseluisq/rust-linux-darwin-builder:1.77'
+      stage: 'build'
+      script:
+        - 'export RUSTUP_HOME=/workspace/.rustup' 
+        - 'export CARGO_HOME=/workspace/.cargo'
+        - 'curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y'
+        - 'export PATH="/workspace/.cargo/bin:$PATH"'
+        - 'export CC_x86_64_apple_darwin=o64-clang'
+        - 'export AR_x86_64_apple_darwin=x86_64-apple-darwin14-ar'
+        - 'cd agent'
+        - 'rustup target add x86_64-apple-darwin'
+        - 'cargo build --release --target x86_64-apple-darwin'
+        - 'mv target/x86_64-apple-darwin/release/plectr target/x86_64-apple-darwin/release/plectr-macos-x86_64'
+      artifacts:
+        - 'agent/target/x86_64-apple-darwin/release/plectr-macos-x86_64'

@@ -1,0 +1,35 @@
+plectr.com {
+    handle /auth* {
+        reverse_proxy keycloak:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-For {remote}
+        }
+    }
+
+    handle /api/auth/* {
+        reverse_proxy ui:3000
+    }
+
+    handle /api/* {
+        reverse_proxy core:3000
+    }
+
+    handle /v2/* {
+        reverse_proxy core:3000
+    }
+    handle /repos* {
+        reverse_proxy core:3000
+    }
+    handle /upload* {
+        reverse_proxy core:3000
+    }
+    handle /analytics* {
+        reverse_proxy core:3000
+    }
+
+    handle /* {
+        reverse_proxy ui:3000
+    }
+}

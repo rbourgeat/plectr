@@ -1,0 +1,189 @@
+services:
+  # --- PROXY ---
+  caddy:
+    image: caddy:2-alpine
+    container_name: plectr-proxy
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - plectr_caddy_data:/data
+    depends_on:
+      - core
+      - ui
+      - keycloak
+    networks:
+      - plectr-net
+
+  # --- BDD ---
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: plectr-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - plectr_pg_data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+    networks:
+      - plectr-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      retries: 5
+
+  # --- KEYCLOAK ---
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: plectr-auth
+    command: start-dev --http-relative-path=/auth
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_PROXY: edge
+      KC_HOSTNAME_URL: https://plectr.com/auth
+      KC_HOSTNAME_ADMIN_URL: https://plectr.com/auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - plectr-net
+
+  # --- STORAGE (SeaweedFS) ---
+  seaweedfs-master:
+    image: chrislusf/seaweedfs
+    container_name: plectr-fs-master
+    restart: always
+    command: 'master -ip=plectr-fs-master -ip.bind=0.0.0.0 -mdir=/data'
+    volumes:
+      - plectr_master_data:/data
+    networks:
+      - plectr-net
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs
+    container_name: plectr-fs-volume
+    restart: always
+    command: 'volume -mserver=plectr-fs-master:9333 -ip=plectr-fs-volume -publicUrl=plectr-fs-volume:8080 -port=8080 -dir=/data -max=100'
+    depends_on:
+      - seaweedfs-master
+    volumes:
+      - plectr_volume_data:/data
+    networks:
+      - plectr-net
+
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs
+    container_name: plectr-fs-filer
+    restart: always
+    command: 'filer -master=plectr-fs-master:9333 -ip=plectr-fs-filer -ip.bind=0.0.0.0'
+    volumes:
+      - plectr_filer_data:/data
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+    networks:
+      - plectr-net
+
+  seaweedfs-s3:
+    image: chrislusf/seaweedfs
+    container_name: plectr-fs-s3
+    restart: always
+    entrypoint:
+      - '/bin/sh'
+      - '-c'
+      - |
+        echo '{"identities":[{"name":"admin","credentials":[{"accessKey":"'${S3_ACCESS_KEY}'","secretKey":"'${S3_SECRET_KEY}'"}],"actions":["Admin","Read","Write"]}]}' > /etc/s3.json && \
+        exec weed s3 \
+        -filer=plectr-fs-filer:8888 \
+        -ip.bind=0.0.0.0 \
+        -port=8333 \
+        -domainName=localhost \
+        -config=/etc/s3.json
+    environment:
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-filer
+    networks:
+      - plectr-net
+
+  # --- BACKEND ---
+  core:
+    build:
+      context: ../core
+      dockerfile: Dockerfile
+    container_name: plectr-core
+    restart: always
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@plectr-db:5432/${POSTGRES_DB}
+      S3_ENDPOINT: http://plectr-fs-s3:8333
+      RUST_LOG: info
+      OIDC_ISSUER: http://keycloak:8080/auth/realms/plectr
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    expose:
+      - '3000'
+    depends_on:
+      - postgres
+      - keycloak
+    networks:
+      - plectr-net
+
+  # --- FRONTEND ---
+  ui:
+    build:
+      context: ../ui
+      dockerfile: Dockerfile
+    container_name: plectr-ui
+    restart: always
+    environment:
+      API_INTERNAL_URL: http://plectr-core:3000
+      NEXT_PUBLIC_API_URL: https://plectr.com
+      NEXTAUTH_URL: https://plectr.com
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ISSUER: https://plectr.com/auth/realms/plectr
+    expose:
+      - '3000'
+    networks:
+      - plectr-net
+
+  # --- CI/CD RUNNER ---
+  runner:
+    build:
+      context: ../runner
+      dockerfile: Dockerfile
+    container_name: plectr-runner
+    restart: always
+    environment:
+      PLECTR_CORE_URL: 'ws://core:3000/api/runner/ws'
+      RUNNER_TOKEN: ${RUNNER_TOKEN}
+      RUNNER_NAME: ${RUNNER_NAME}
+      RUST_LOG: 'info'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - core
+    networks:
+      - plectr-net
+
+volumes:
+  plectr_pg_data:
+  plectr_master_data:
+  plectr_volume_data:
+  plectr_filer_data:
+  plectr_caddy_data:
+
+networks:
+  plectr-net:
+    driver: bridge

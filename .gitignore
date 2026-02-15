@@ -1,0 +1,35 @@
+# --- System ---
+.DS_Store
+Thumbs.db
+*.log
+
+# --- Secrets & Environment ---
+.env
+.env*.local
+*.pem
+*.key
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Rust (Core & Agent) ---
+/target/
+/core/target/
+/agent/target/
+**/*.rs.bk
+Cargo.lock
+
+# --- Node.js (UI) ---
+node_modules/
+npm-debug.log
+yarn-error.log
+.next/
+/ui/.next/
+/ui/out/
+/ui/build/
+
+
+# --- Plectr Agent State ---
+.plectr/

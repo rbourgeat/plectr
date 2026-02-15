@@ -1,0 +1,26 @@
+ID,Category,Feature,Description,Priority,Status,Effort
+SEC-01,Security,Authentication System,Implémenter OIDC (OpenID Connect) via Keycloak avec login custom "White Label" et validation JWT Axum,P0,Done,High
+SEC-02,Security,Role Based Access Control (RBAC),Permissions (Owner/Admin/Viewer) et visibilité (Public/Private) par repo,P0,Done,Medium
+SEC-03,Security,Branch Protection & Signing,Protection des branches (main) et signature GPG/SSH des commits par l'agent,P1,Idea,High
+CORE-01,Performance,Resumable Uploads (Tus),Implémenter le protocole Tus pour uploads résilients de fichiers >50GB,P1,Pending,High
+CORE-02,Performance,Direct S3 Upload,Uploads directs depuis le CLI vers SeaweedFS via Presigned URLs,P2,Pending,Medium
+CORE-03,Data,DuckDB Integration,Requêtes SQL sur fichiers CSV/Parquet distants via httpfs,P1,Done,Medium
+CORE-04,Performance,Protocol: FastCDC & Dedup,Content Defined Chunking (FastCDC/GearHash) pour déduplication globale et delta sync,P0,Idea,Very High
+CORE-05,Storage,Virtual File System (FUSE),Mount plectr repos as local drives (Read-only streaming) sans clonage complet,P1,Idea,Very High
+CORE-06,Container,Docker Registry V2,Implémentation complète OCI Distribution Spec (Push/Pull Docker images),P0,Done,Very High
+CORE-07,Versioning,Merge & Conflict Resolution,Détection de divergence et UI de résolution de conflits (Three-way merge),P0,Done,High
+UI-01,Interface,Real-time Updates,WebSockets/SSE pour timeline et statut des fichiers en direct,P2,Pending,Medium
+UI-02,Interface,3D Viewer,Visualisation native des assets 3D avec Three.js (.obj/ .glb),P3,Pending,High
+UI-03,Interface,Jupyter Rendering,Rendu natif des .ipynb avec diffing visuel des cellules (vs JSON diff),P2,Idea,Medium
+UI-04,Interface,Universal Data Diffing,Diff SQL sémantique pour CSV/Parquet (Rows added/removed/modified) via DuckDB,P1,Idea,Medium
+UI-05,Interface,SafeTensors Inspector,Visualisation des métadonnées et architecture des modèles IA (Layers/Params),P1,Done,Low
+AI-01,Intelligence,Semantic Code Search (RAG),Indexation pgvector du code pour recherche en langage naturel,P1,Pending,High
+AI-02,Intelligence,Model Diffing,Comparer deux versions de modèles IA au-delà du hash (Poids/ Métadonnées),P3,Pending,High
+AI-03,Intelligence,Model Lineage & Metrics,Tracking des hyperparamètres et métriques d'entraînement liés aux commits,P2,Idea,Medium
+OPS-01,Infra,Kubernetes Helm Chart,Déploiement K8s clé en main avec Helm,P2,Pending,High
+OPS-02,Pipeline,Resonance Actions (CI/CD),Exécution de pipelines via runtime WASM ou Firecracker (Serverless),P2,Idea,Very High
+OPS-03,Infra,Repository Mirroring,Sync auto vers GitHub/GitLab avec chiffrement AES-256 des tokens,P2,Done,High
+CLI-01,Agent,TUI Mode (Ratatui),Interface graphique dans le terminal pour monitoring et exploration,P3,Idea,Medium
+CLI-02,Agent,Smart Ignore & Perf,Détection auto des .gitignore et exclusion intelligente des node_modules/target,P2,Done,Low
+CLI-03,Agent,Transport Multiplexing,Support SSH/QUIC pour environnements contraints et performance,P2,Idea,High
+UX-01,Interface,Void State Handling,Gestion élégante des repositories vides et onboarding CLI,P1,Done,Low
